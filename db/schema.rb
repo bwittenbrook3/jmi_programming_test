@@ -30,6 +30,8 @@ ActiveRecord::Schema.define(version: 20150905060040) do
     t.string   "viridans_group_include"
     t.string   "genus_include"
     t.string   "genus_exclude"
+    t.string   "organism_code_include"
+    t.string   "organism_code_exclude"
     t.string   "gram_include"
     t.string   "level_1_include"
     t.string   "level_3_include"
