@@ -1,0 +1,13 @@
+
+
+h2 
+  = "Drug Name: "
+  = @drug.name + " (" + @drug.id.to_s + ")"
+
+h2 
+  = "Isolate ID: "
+  = @isolate.id
+
+h3 
+  = "Reaction: "
+  = ClsiBreakpoint.determine_reaction(@isolate.id, @drug.id)

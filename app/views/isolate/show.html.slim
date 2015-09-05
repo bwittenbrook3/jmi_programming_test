@@ -1,0 +1,12 @@
+h1 
+  = "Isolate ID: "
+  = @isolate.id
+
+table
+  tr
+    th Drug Name
+    th MIC Reading
+  - @drugs.each do |drug|
+    tr
+      td = drug.name + " (" + drug.id.to_s + ")"
+      td = MicResult.where(drug_id: drug.id, isolate_id: @isolate.id).pluck(:mic_value).map{|x| x.truncate(2)}.join(", ")

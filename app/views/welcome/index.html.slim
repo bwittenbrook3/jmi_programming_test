@@ -1,6 +1,10 @@
-h1 Welcome to the 
+h1 CLSI Breakpoints
 
 = simple_form_for :file_upload, url: 'upload_data_file' do |f|
-  h2 Upload test data
+  h3 Upload test data
   = f.input :upload, as: :file, label: ''
   = f.submit
+
+h2 Please choose an Isolate
+- @isolates.each do |isolate|
+  = link_to isolate.id, isolate_url(isolate)

@@ -2,6 +2,11 @@ Rails.application.routes.draw do
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
+  resources :isolate
+
+  resources :isolate_drug_reaction, only: [:index, :create] do 
+    get ':drug_id/:isolate_id' => "isolate_drug_reaction#show", on: :collection, as: "show"
+  end
 
   get 'upload_data_file' => 'data_file#view'
   post 'upload_data_file' => 'data_file#upload'

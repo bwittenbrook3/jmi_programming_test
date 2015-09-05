@@ -7,6 +7,10 @@ class ClsiBreakpoint < ActiveRecord::Base
     mic_results = MicResult.where(isolate_id: isolate_id, drug_id: drug_id).first
     breakpoint = self.determine_breakpoint(isolate_id, drug_id)
 
+    return "" if breakpoint.nil?
+    return "" if breakpoint.surrogate_drugs.count > 0
+    return "" if mic_results.nil?
+
     # Logic reads breakpoint information
     if mic_results.mic_edge != 1 
       if mic_results.mic_value <= breakpoint.s_maximum
@@ -35,6 +39,7 @@ class ClsiBreakpoint < ActiveRecord::Base
         return breakpoint
       end
     end
+    return nil
   end
 
   def related_mic_results
