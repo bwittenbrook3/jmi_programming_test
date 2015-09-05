@@ -70,9 +70,11 @@ class DataFile < ActiveRecord::Base
 
     # Import CLSI Breakpoints
     ClsiBreakpoint.delete_all
+    SurrogateDrugAssignment.delete_all
     data = xlsx.sheet('clsi_2015_breakpoints').parse(   drug_name: 'drug',
                                                         s_maximum: 's_maximum',
                                                         r_minimum: 'r_minimum',
+                                                        surrogate_drugs: 'surrogate_drugs',
                                                         r_if_surrogate_is: 'r_if_surrogate_is',
                                                         ni_if_surrogate_is: 'ni_if_surrogate_is',
                                                         r_if_blt_is: 'r_if_blt_is',
@@ -89,12 +91,26 @@ class DataFile < ActiveRecord::Base
                                                         level_3_exclude: 'level_3_exclude'  )
     data.shift
     clsi_breakpoints = []
+    surrogate_drug_assignments = []
     data.each do |row|
       row[:drug_id] = Drug.find_or_create_by(name: row[:drug_name]).id
       row.delete(:drug_name)
-      clsi_breakpoints <<  ClsiBreakpoint.new(row)
+      surrogate_drugs_literal = row[:surrogate_drugs] || ""
+      row.delete(:surrogate_drugs)
+
+      surrogate_drug_names = String.new(surrogate_drugs_literal).split(",").map(&:strip)
+
+      clsi_breakpoint = ClsiBreakpoint.new(row)
+
+      surrogate_drug_names.each do |surrogate_drug_name|
+        drug_id = Drug.find_or_create_by(name: surrogate_drug_name).id
+        surrogate_drug_assignments << SurrogateDrugAssignment.new(surrogate_drug_id: drug_id, clsi_breakpoint_id: clsi_breakpoint.id)
+      end
+      
+      clsi_breakpoints << clsi_breakpoint
     end
     ClsiBreakpoint.import clsi_breakpoints
+    SurrogateDrugAssignment.import surrogate_drug_assignments
 
   end
 

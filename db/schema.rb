@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150905033734) do
+ActiveRecord::Schema.define(version: 20150905060040) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -85,6 +85,13 @@ ActiveRecord::Schema.define(version: 20150905033734) do
     t.string   "level_4_class"
     t.datetime "created_at",     null: false
     t.datetime "updated_at",     null: false
+  end
+
+  create_table "surrogate_drug_assignments", force: :cascade do |t|
+    t.integer  "clsi_breakpoint_id"
+    t.integer  "surrogate_drug_id"
+    t.datetime "created_at",         null: false
+    t.datetime "updated_at",         null: false
   end
 
 end
