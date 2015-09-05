@@ -1,0 +1,6 @@
+h1 Welcome to the 
+
+= simple_form_for :file_upload, url: 'upload_data_file' do |f|
+  h2 Upload test data
+  = f.input :upload, as: :file, label: ''
+  = f.submit
