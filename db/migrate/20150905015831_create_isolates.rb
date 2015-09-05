@@ -5,7 +5,7 @@ class CreateIsolates < ActiveRecord::Migration
       t.integer :site_id
       t.integer :study_year
       t.integer :bank_no
-      t.string :organism_code
+      t.string  :organism_code
 
       t.timestamps null: false
     end
