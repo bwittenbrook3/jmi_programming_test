@@ -36,7 +36,11 @@ table
           td.center_text = "&ge; ".html_safe + breakpoint.r_minimum.to_s
         - else
           td.center_text = ""
-        td.center_text = breakpoint.reaction(mic_result)
+
+        - unless breakpoint.nil?  
+          td.center_text = link_to breakpoint.reaction(mic_result), isolate_reaction_detail_path(@isolate,drug)
+        - else
+          td = ""
       - else
         td = ""
         td = ""

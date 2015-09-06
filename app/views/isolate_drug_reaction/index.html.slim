@@ -1,6 +1,0 @@
-h1 Isloate drug reaction
-
-= simple_form_for :isolate_drug_reaction, url: 'isolate_drug_reaction' do |f|
-  = f.input :isolate_id, collection: @isolates, as: :select, label_method: :id, value_method: :id
-  = f.input :drug_id, collection: @drugs, as: :select, label_method: :id, value_method: :id
-  = f.submit :Submit

@@ -2,7 +2,10 @@ Rails.application.routes.draw do
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
-  resources :isolate
+  resources :isolate do 
+    get ":drug_id/reaction_detail" => "isolate#detail", as: "reaction_detail"
+  end
+  resources :clsi_breakpoint
 
   post 'upload_data_file' => 'data_file#upload'
 
