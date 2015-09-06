@@ -1,10 +1,15 @@
 h1 CLSI Breakpoints
 
-= simple_form_for :file_upload, url: 'upload_data_file' do |f|
-  h3 Upload test data
-  = f.input :upload, as: :file, label: ''
-  = f.submit
+
+= simple_form_for :file_upload, url: upload_data_file_path do |f|
+  fieldset
+    legend Upload Data File
+    .left = f.input :upload, as: :file, label: false
+    = f.submit "Upload",  class: "button small"
 
 h2 Please choose an Isolate
-- @isolates.each do |isolate|
-  = link_to isolate.id, isolate_url(isolate)
+- @organisms.each do |organism|
+  h2
+    small = organism.name
+  - @isolates_by_organism_code[organism.code].each do |isolate|
+    = link_to isolate.id, isolate_url(isolate)

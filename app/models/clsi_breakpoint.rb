@@ -3,43 +3,54 @@ class ClsiBreakpoint < ActiveRecord::Base
   has_many :surrogate_drug_assignments
   has_many :surrogate_drugs, through: :surrogate_drug_assignments
 
-  def self.determine_reaction(isolate_id, drug_id)
-    mic_results = MicResult.where(isolate_id: isolate_id, drug_id: drug_id).first
-    breakpoint = self.determine_breakpoint(isolate_id, drug_id)
+  def reaction(mic_result)
+    return "" if mic_result.nil?
 
-    return "" if breakpoint.nil?
-    return "" if breakpoint.surrogate_drugs.count > 0
-    return "" if mic_results.nil?
+    surrogate_drugs_reactions = []
+    surrogate_drugs.each do |surrogate_drug|
+      breakpoint = ClsiBreakpoint.determine_breakpoint(mic_result.isolate.id, surrogate_drug.id).last
+      surrogate_drugs_reactions << breakpoint.reaction(mic_result) unless breakpoint.nil?
+    end
 
-    # Logic reads breakpoint information
-    if mic_results.mic_edge != 1 
-      if mic_results.mic_value <= breakpoint.s_maximum
-        return "S"
-      elsif mic_results.mic_value >= breakpoint.r_minimum
-        return "R"
-      else
-        return "I"
+    out = ""
+    if is_susptable?(mic_result)
+      out = "S"
+    elsif is_resistant?(mic_result)
+      out = "R"
+    elsif !s_maximum.nil? && !r_minimum.nil?
+      out = "I"
+    end
+
+    if out == "" && surrogate_drugs_reactions.size > 0
+      out = "S" if surrogate_drugs_reactions.include?("S")
+      out = "I" if surrogate_drugs_reactions.include?("I")
+      out = "R" if surrogate_drugs_reactions.include?("R")
+    end
+
+    surrogate_drugs_reactions.each do |surrogate_drug_reaction|
+      unless r_if_surrogate_is.nil?
+        out = "R" if r_if_surrogate_is.include?(surrogate_drug_reaction)
       end
-    else
-      if mic_results.mic_value >= (breakpoint.s_maximum / 2.0)
-        return "R"
-      else
-        return "I"
+
+      unless ni_if_surrogate_is.nil?
+        out = "" if ni_if_surrogate_is.include?(surrogate_drug_reaction)
       end
     end
 
+    return out
   end
 
   def self.determine_breakpoint(isolate_id, drug_id)
     isolate = Isolate.find(isolate_id)
     drug = Drug.find(drug_id)
     mic_results = MicResult.where(isolate_id: isolate_id, drug_id: drug_id)
+    breakpoints = []
     drug.clsi_breakpoints.each do |breakpoint|
       if breakpoint.related_organism_codes.include?(isolate.organism_code)
-        return breakpoint
+        breakpoints << breakpoint
       end
     end
-    return nil
+    return breakpoints
   end
 
   def related_mic_results
@@ -54,60 +65,93 @@ class ClsiBreakpoint < ActiveRecord::Base
     organisms_codes = []
 
     # master_group_include
-    Organism.where(master_group: self.master_group_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless master_group_include.nil?
+      Organism.where(master_group: master_group_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     # organism_group_include
-    Organism.where(group: self.organism_group_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless master_group_include.nil?
+      Organism.where(group: organism_group_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     # viridans_group_include
-    Organism.where(viridans_group: self.viridans_group_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless viridans_group_include.nil?
+      Organism.where(viridans_group: viridans_group_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     # genus_include
-    Organism.where(genus: self.genus_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless genus_include.nil?
+      Organism.where(genus: genus_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
+    
 
     # genus_exclude 
-    Organism.where(genus: self.organism_group_include).pluck(:code).each do |organism_code|
-      organisms_codes.delete(organism_code)
+    unless organism_group_include.nil?
+      Organism.where(genus: organism_group_include).pluck(:code).each do |organism_code|
+        organisms_codes.delete(organism_code)
+      end
     end
 
     # organism_code_include
-    codes = self.organism_code_include || ""
-    codes.split(",").each do |organism_code|
-      puts organism_code
-      organisms_codes << organism_code
+    unless organism_code_include.nil?
+      organism_code_include.split(",").each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     #organism_code_exclude
-    codes = self.organism_code_exclude || ""
-    codes.split(",").each do |organism_code|
-      organisms_codes.delete(organism_code)
+    unless organism_code_exclude.nil?
+      organism_code_exclude.split(",").each do |organism_code|
+        organisms_codes.delete(organism_code)
+      end
     end
 
     # level_1_include
-    Organism.where(level_1_class: self.level_1_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless level_1_include.nil?
+      Organism.where(level_1_class: level_1_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     # level_3_include
-    Organism.where(level_3_class: self.level_3_include).pluck(:code).each do |organism_code|
-      organisms_codes << organism_code
+    unless level_3_include.nil?
+      Organism.where(level_3_class: level_3_include).pluck(:code).each do |organism_code|
+        organisms_codes << organism_code
+      end
     end
 
     # level_3_exclude
-    Organism.where(level_3_class: self.level_3_exclude).pluck(:code).each do |organism_code|
-      organisms_codes.deleteorganism_code
+    unless level_3_exclude.nil?
+      Organism.where(level_3_class: level_3_exclude).pluck(:code).each do |organism_code|
+        organisms_codes.deleteorganism_code
+      end
     end
 
     return organisms_codes
   end
 
+  private
+  def is_susptable?(mic_result)
+    return false if self.s_maximum.nil?
 
+    return mic_result.mic_edge <= 0 && mic_result.mic_value <= self.s_maximum
+  end
+
+  def is_resistant?(mic_result)
+    return false if self.r_minimum.nil?
+
+    if mic_result.mic_edge <= 0 
+      return mic_result.mic_value >= self.r_minimum
+    else
+      return mic_result.mic_value >= (self.r_minimum / 2.0)
+    end
+  end
 end

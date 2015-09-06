@@ -12,4 +12,23 @@
  *
  *= require_tree .
  *= require_self
+ *= require foundation_and_overrides
+
  */
+
+ .wrapper {
+  width: 800px;
+  margin: 0 auto;
+ }
+
+.left {
+  float: left;
+}
+
+td.center_text{
+  text-align: center;
+}
+
+.footnote{
+  font-size: 10px
+}

@@ -4,11 +4,6 @@ Rails.application.routes.draw do
 
   resources :isolate
 
-  resources :isolate_drug_reaction, only: [:index, :create] do 
-    get ':drug_id/:isolate_id' => "isolate_drug_reaction#show", on: :collection, as: "show"
-  end
-
-  get 'upload_data_file' => 'data_file#view'
   post 'upload_data_file' => 'data_file#upload'
 
   # You can have the root of your site routed with "root"

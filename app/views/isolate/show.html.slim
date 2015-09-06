@@ -1,4 +1,6 @@
-h1 
+h1 = "Organism: " + @isolate.organism.name
+
+h2
   = "Isolate ID: "
   = @isolate.id
 
@@ -6,7 +8,37 @@ table
   tr
     th Drug Name
     th MIC Reading
+    th MIC Edge
+    th Footnote
+    th Susceptible
+    th Resistant
+    th Reaction
   - @drugs.each do |drug|
-    tr
-      td = drug.name + " (" + drug.id.to_s + ")"
-      td = MicResult.where(drug_id: drug.id, isolate_id: @isolate.id).pluck(:mic_value).map{|x| x.truncate(2)}.join(", ")
+    tr 
+      - mic_result = MicResult.where(drug_id: drug.id, isolate_id: @isolate.id).first
+      - breakpoints = ClsiBreakpoint.determine_breakpoint(@isolate.id, drug.id)
+      - breakpoint = breakpoints.last
+
+      td = drug.name + " (" + drug.id.to_s + ")" 
+      - unless mic_result.nil?
+        td.center_text = mic_result.mic_value.truncate(2)
+        td.center_text = mic_result.mic_edge
+      - else
+        td.center_text = ""
+        td.center_text = ""
+      - unless breakpoint.nil?
+        td = breakpoint.footnote unless breakpoint.nil?
+        - unless breakpoint.s_maximum.to_s == ""
+          td.center_text = "&le; ".html_safe + breakpoint.s_maximum.to_s
+        - else 
+          td.center_text = ""
+        - unless breakpoint.r_minimum.to_s == ""
+          td.center_text = "&ge; ".html_safe + breakpoint.r_minimum.to_s
+        - else
+          td.center_text = ""
+        td.center_text = breakpoint.reaction(mic_result)
+      - else
+        td = ""
+        td = ""
+        td = ""
+        td = ""
