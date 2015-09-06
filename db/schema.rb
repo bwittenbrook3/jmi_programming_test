@@ -37,6 +37,7 @@ ActiveRecord::Schema.define(version: 20150905060040) do
     t.string   "level_3_include"
     t.string   "level_3_exclude"
     t.string   "related_organism_codes_list"
+    t.integer  "rule_row_number"
     t.integer  "drug_id"
     t.datetime "created_at",                                           null: false
     t.datetime "updated_at",                                           null: false

@@ -52,11 +52,13 @@ class DataFile < ActiveRecord::Base
     SurrogateDrugAssignment.delete_all
     data = xlsx.sheet('clsi_2015_breakpoints').parse(*self.clsi_breakpoints_sheet_headers)
     data.shift
-    data.each do |row|
+    data.each_with_index do |row, index|
       row[:drug_id] = Drug.find_or_create_by(name: row[:drug_name]).id
       row.delete(:drug_name)
       surrogate_drugs_literal = row[:surrogate_drugs] || ""
       row.delete(:surrogate_drugs)
+
+      row[:rule_row_number] = index + 2 # Plus two for the zero-index and header row
 
       surrogate_drug_names = String.new(surrogate_drugs_literal).split(",").map(&:strip)
 
@@ -120,6 +122,7 @@ class DataFile < ActiveRecord::Base
                 infection_type: 'infection_type',
                 footnote: 'footnote',
                 master_group_include: 'master_group_include',
+                organism_group_include: 'organism_group_include',
                 viridans_group_include: 'viridans_group_include',
                 genus_include: 'genus_include',
                 genus_exclude: 'genus_exclude',

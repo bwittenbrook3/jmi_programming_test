@@ -38,7 +38,7 @@ table
           td.center_text = ""
 
         - unless breakpoint.nil?  
-          td.center_text = link_to breakpoint.reaction(mic_result), isolate_reaction_detail_path(@isolate,drug)
+          td.center_text = breakpoint.reaction(mic_result)[0]
         - else
           td = ""
       - else

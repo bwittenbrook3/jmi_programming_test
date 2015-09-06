@@ -6,40 +6,79 @@ class ClsiBreakpoint < ActiveRecord::Base
   after_create :related_organism_codes
 
   def reaction(mic_result)
-    return "" if mic_result.nil?
+    reaction = ""
+    eligible_interpretations = "NULL"
+    used_surrogate_drug_id = "NULL"
+    used_surrogate_drug_ordinal = "NULL"
+    used_surrogate_rule_type = "NULL"
+
+    if mic_result.nil?
+      return reaction, eligible_interpretations, used_surrogate_drug_id, used_surrogate_drug_ordinal, used_surrogate_rule_type
+    end
 
     surrogate_drugs_reactions = []
+    surrogate_drugs_elgible_values = ""
     surrogate_drugs.each do |surrogate_drug|
-      breakpoint = ClsiBreakpoint.determine_breakpoint(mic_result.isolate.id, surrogate_drug.id).last
-      surrogate_drugs_reactions << breakpoint.reaction(mic_result) unless breakpoint.nil?
+      mr = MicResult.where(drug_id: surrogate_drug.id, isolate_id: mic_result.isolate_id).first
+      unless mr.nil?
+        ClsiBreakpoint.determine_breakpoint(mr.isolate_id, surrogate_drug.id).each do |breakpoint|
+          unless breakpoint.nil?
+            used_surrogate_drug_id = surrogate_drug.id
+            surrogate_reaction = breakpoint.reaction(mr)
+            surrogate_drugs_reactions << surrogate_reaction[0]
+            surrogate_drugs_elgible_values = surrogate_reaction[1]
+          end
+        end
+      end
     end
 
-    out = ""
+    # Identify elgible interpretations
+    if s_maximum.nil?
+      if r_minimum.nil?
+        eligible_interpretations = ""
+      end
+    else
+      if r_minimum.nil?
+        eligible_interpretations = "S NS"
+      else
+        if (r_minimum / 2.0) <= s_maximum
+          eligible_interpretations = "S R"
+        else
+          eligible_interpretations = "S I R"
+        end
+      end
+    end
+
+    reaction = ""
     if is_susptable?(mic_result)
-      out = "S"
+      reaction = "S"
     elsif is_resistant?(mic_result)
-      out = "R"
+      reaction = "R"
     elsif !s_maximum.nil? && !r_minimum.nil?
-      out = "I"
+      reaction = "I"
     end
 
-    if out == "" && surrogate_drugs_reactions.size > 0
-      out = "S" if surrogate_drugs_reactions.include?("S")
-      out = "I" if surrogate_drugs_reactions.include?("I")
-      out = "R" if surrogate_drugs_reactions.include?("R")
+    if reaction == "" && surrogate_drugs_reactions.size > 0
+      eligible_interpretations = surrogate_drugs_elgible_values
+      used_surrogate_drug_ordinal = 0
+      used_surrogate_rule_type = "no_base_drug_breakpoints"
+      puts surrogate_drugs_reactions.to_s
+      reaction = "S" if surrogate_drugs_reactions.include?("S")
+      reaction = "I" if surrogate_drugs_reactions.include?("I")
+      reaction = "R" if surrogate_drugs_reactions.include?("R")
     end
 
     surrogate_drugs_reactions.each do |surrogate_drug_reaction|
       unless r_if_surrogate_is.nil?
-        out = "R" if r_if_surrogate_is.include?(surrogate_drug_reaction)
+        reaction = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_reaction)
       end
 
       unless ni_if_surrogate_is.nil?
-        out = "" if ni_if_surrogate_is.include?(surrogate_drug_reaction)
+        reaction = "" if ni_if_surrogate_is.split(",").include?(surrogate_drug_reaction)
       end
     end
 
-    return out
+    return reaction, eligible_interpretations, used_surrogate_drug_id, used_surrogate_drug_ordinal, used_surrogate_rule_type 
   end
 
   def self.determine_breakpoint(isolate_id, drug_id)
@@ -48,7 +87,7 @@ class ClsiBreakpoint < ActiveRecord::Base
     mic_results = MicResult.where(isolate_id: isolate_id, drug_id: drug_id)
     breakpoints = []
     drug.clsi_breakpoints.each do |breakpoint|
-      if breakpoint.related_organism_codes.include?(isolate.organism_code)
+      if breakpoint.related_organism_codes.split(", ").include?(isolate.organism_code)
         breakpoints << breakpoint
       end
     end
@@ -75,7 +114,7 @@ class ClsiBreakpoint < ActiveRecord::Base
     end
 
     # organism_group_include
-    unless master_group_include.nil?
+    unless organism_group_include.nil?
       Organism.where(group: organism_group_include).pluck(:code).each do |organism_code|
         organisms_codes << organism_code
       end

@@ -12,8 +12,27 @@ wb.add_worksheet(name: "isolate_drug_reactions") do |sheet|
     breakpoints = ClsiBreakpoint.determine_breakpoint(mic_result.isolate.id, mic_result.drug.id)
 
     breakpoints.each do |breakpoint|
-      sheet.add_row ["CLSI", "2015", breakpoint.delivery_mechanism, breakpoint.infection_type,
-        mic_result.drug.id, mic_result.isolate.id, breakpoint.reaction(mic_result), breakpoint.footnote]
+      reaction, 
+      eligible_interpretations, 
+      used_surrogate_drug_id, 
+      used_surrogate_drug_ordinal, 
+      used_surrogate_rule_type = breakpoint.reaction(mic_result)
+
+      if reaction != ""
+        sheet.add_row [ "CLSI", 
+                        "2015",  
+                        breakpoint.delivery_mechanism, 
+                        breakpoint.infection_type,
+                        mic_result.isolate_id, 
+                        mic_result.drug_id, 
+                        reaction, 
+                        breakpoint.footnote, 
+                        eligible_interpretations,
+                        breakpoint.rule_row_number.to_s, 
+                        used_surrogate_drug_id, 
+                        used_surrogate_drug_ordinal, 
+                        used_surrogate_rule_type          ]
+      end
     end
   end
 
