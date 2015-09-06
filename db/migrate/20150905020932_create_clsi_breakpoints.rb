@@ -20,6 +20,7 @@ class CreateClsiBreakpoints < ActiveRecord::Migration
       t.string :level_1_include
       t.string :level_3_include
       t.string :level_3_exclude
+      t.string :related_organism_codes_list
 
       # Related AD models
       t.integer :drug_id

@@ -17,8 +17,8 @@ ActiveRecord::Schema.define(version: 20150905060040) do
   enable_extension "plpgsql"
 
   create_table "clsi_breakpoints", force: :cascade do |t|
-    t.decimal  "s_maximum",              precision: 10, scale: 2
-    t.decimal  "r_minimum",              precision: 10, scale: 2
+    t.decimal  "s_maximum",                   precision: 10, scale: 2
+    t.decimal  "r_minimum",                   precision: 10, scale: 2
     t.string   "r_if_surrogate_is"
     t.string   "ni_if_surrogate_is"
     t.string   "r_if_blt_is"
@@ -36,9 +36,10 @@ ActiveRecord::Schema.define(version: 20150905060040) do
     t.string   "level_1_include"
     t.string   "level_3_include"
     t.string   "level_3_exclude"
+    t.string   "related_organism_codes_list"
     t.integer  "drug_id"
-    t.datetime "created_at",                                      null: false
-    t.datetime "updated_at",                                      null: false
+    t.datetime "created_at",                                           null: false
+    t.datetime "updated_at",                                           null: false
   end
 
   create_table "data_files", force: :cascade do |t|

@@ -1,0 +1,23 @@
+require 'axlsx'
+
+wb = xlsx_package.workbook
+wb.add_worksheet(name: "isolate_drug_reactions") do |sheet|
+  sheet.add_row ['authority', 'publication', 'delivery_mechanism', 
+    'infection_type', 'isolate_id', 'drug_id', 'reaction', 'footnote', 
+    'eligible_interpretations', 'rule_row_number', 'used_surrogate_drug_id', 
+    'used_surrogate_drug_ordinal', 'used_surrogate_rule_type']
+  
+  @mic_results.each do |mic_result|
+
+    breakpoints = ClsiBreakpoint.determine_breakpoint(mic_result.isolate.id, mic_result.drug.id)
+
+    breakpoints.each do |breakpoint|
+      sheet.add_row ["CLSI", "2015", breakpoint.delivery_mechanism, breakpoint.infection_type,
+        mic_result.drug.id, mic_result.isolate.id, breakpoint.reaction(mic_result), breakpoint.footnote]
+    end
+  end
+
+  # @buttons.each do |button|
+  #   sheet.add_row [button.name, button.category, button.price]
+  # end
+end

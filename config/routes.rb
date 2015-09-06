@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   resources :clsi_breakpoint
 
   post 'upload_data_file' => 'data_file#upload'
+  get 'isolate_drug_reactions' => 'welcome#download_isolate_drug_reactions', default: {format: 'xlsx'}
 
   # You can have the root of your site routed with "root"
   root 'welcome#index'

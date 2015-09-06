@@ -34,9 +34,18 @@ gem 'sdoc', '~> 0.4.0', group: :doc
 
 gem 'slim-rails'
 gem 'simple_form'
-gem 'roo'
+
 gem 'activerecord-import'
 gem 'foundation-rails'
+
+# EXCEL
+gem 'roo'
+gem 'iconv'
+gem 'rubyzip'
+gem 'zip-zip'
+gem 'axlsx', '~> 2.0'
+gem 'axlsx_rails'
+
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console

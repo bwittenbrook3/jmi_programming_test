@@ -3,6 +3,8 @@ class ClsiBreakpoint < ActiveRecord::Base
   has_many :surrogate_drug_assignments
   has_many :surrogate_drugs, through: :surrogate_drug_assignments
 
+  after_create :related_organism_codes
+
   def reaction(mic_result)
     return "" if mic_result.nil?
 
@@ -62,6 +64,7 @@ class ClsiBreakpoint < ActiveRecord::Base
   end
 
   def related_organism_codes
+    return related_organism_codes_list unless related_organism_codes_list.nil?
     organisms_codes = []
 
     # master_group_include
@@ -135,7 +138,9 @@ class ClsiBreakpoint < ActiveRecord::Base
       end
     end
 
-    return organisms_codes
+    self.related_organism_codes_list = organisms_codes.join(", ")
+    self.save!
+    return related_organism_codes_list
   end
 
   private

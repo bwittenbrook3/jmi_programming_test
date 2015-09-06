@@ -1,7 +1,7 @@
 class DataFile < ActiveRecord::Base
 
   def self.import(file)
-    xlsx = Roo::Spreadsheet.open(file)
+    xlsx = Roo::Spreadsheet.open(file.path)
 
     # Import organisms
     Organism.delete_all
