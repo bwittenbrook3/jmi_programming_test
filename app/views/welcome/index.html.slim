@@ -12,4 +12,5 @@ h1 CLSI Breakpoints
 
 
 .content-wrapper
-  = render partial: 'browse_organisms', locals: {organisms: @organisms, isolates_by_organism_code: @isolates_by_organism_code}
+  - if @organisms.count > 0 
+    = render partial: 'browse_organisms', locals: {organisms: @organisms, isolates_by_organism_code: @isolates_by_organism_code}
