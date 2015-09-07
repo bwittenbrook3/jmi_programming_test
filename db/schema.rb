@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150905060040) do
+ActiveRecord::Schema.define(version: 20150907005118) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -48,11 +48,45 @@ ActiveRecord::Schema.define(version: 20150905060040) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "delayed_jobs", force: :cascade do |t|
+    t.integer  "priority",   default: 0, null: false
+    t.integer  "attempts",   default: 0, null: false
+    t.text     "handler",                null: false
+    t.text     "last_error"
+    t.datetime "run_at"
+    t.datetime "locked_at"
+    t.datetime "failed_at"
+    t.string   "locked_by"
+    t.string   "queue"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "delayed_jobs", ["priority", "run_at"], name: "delayed_jobs_priority", using: :btree
+
   create_table "drugs", force: :cascade do |t|
     t.string   "name"
     t.string   "description"
     t.datetime "created_at",  null: false
     t.datetime "updated_at",  null: false
+  end
+
+  create_table "isolate_drug_reactions", force: :cascade do |t|
+    t.string   "authority"
+    t.string   "publication"
+    t.string   "delivery_mechanism"
+    t.string   "infection_type"
+    t.integer  "isolate_id"
+    t.integer  "drug_id"
+    t.string   "reaction"
+    t.string   "footnote"
+    t.string   "eligible_interpretations"
+    t.integer  "rule_row_number"
+    t.string   "used_surrogate_drug_id"
+    t.string   "used_surrogate_drug_ordinal"
+    t.string   "used_surrogate_rule_type"
+    t.datetime "created_at",                  null: false
+    t.datetime "updated_at",                  null: false
   end
 
   create_table "isolates", force: :cascade do |t|

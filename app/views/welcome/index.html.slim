@@ -1,21 +1,15 @@
 h1 CLSI Breakpoints
 
 
-= simple_form_for :file_upload, url: upload_data_file_path do |f|
+= simple_form_for :file_upload, url: upload_data_file_path, remote: true do |f|
   fieldset
     legend Upload Data File
     .left = f.input :upload, as: :file, label: false
     = f.submit "Upload",  class: "button small"
-    p 
+    p.status 
       b = "*Note: "
       |This will drop all records currently in the database, and import the new file.
 
-- if @organisms.count > 0
-  = link_to "Download Results", isolate_drug_reactions_path(format: :xlsx), class: "button success small"
 
-h2 Please choose an Isolate
-- @organisms.each do |organism|
-  h2
-    small = organism.name
-  - @isolates_by_organism_code[organism.code].each do |isolate|
-    = link_to isolate.id, isolate_url(isolate)
+.content-wrapper
+  = render partial: 'browse_organisms', locals: {organisms: @organisms, isolates_by_organism_code: @isolates_by_organism_code}

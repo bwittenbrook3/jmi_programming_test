@@ -38,6 +38,10 @@ GEM
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
+    acts_as_xlsx (1.0.6)
+      activerecord (>= 2.3.9)
+      axlsx (>= 1.0.13)
+      i18n (>= 0.4.1)
     arel (6.0.3)
     axlsx (2.0.1)
       htmlentities (~> 4.3.1)
@@ -58,6 +62,11 @@ GEM
       execjs
     coffee-script-source (1.9.1.1)
     debug_inspector (0.0.2)
+    delayed_job (4.0.6)
+      activesupport (>= 3.0, < 5.0)
+    delayed_job_active_record (4.0.3)
+      activerecord (>= 3.0, < 5.0)
+      delayed_job (>= 3.0, < 4.1)
     erubis (2.7.0)
     execjs (2.6.0)
     foundation-rails (5.5.2.1)
@@ -121,6 +130,7 @@ GEM
       thor (>= 0.18.1, < 2.0)
     rake (10.4.2)
     rdoc (4.2.0)
+    remotipart (1.2.1)
     roo (1.13.2)
       nokogiri
       rubyzip
@@ -182,10 +192,12 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord-import
+  acts_as_xlsx
   axlsx (~> 2.0)
   axlsx_rails
   byebug
   coffee-rails (~> 4.1.0)
+  delayed_job_active_record
   foundation-rails
   iconv
   jbuilder (~> 2.0)
@@ -193,6 +205,7 @@ DEPENDENCIES
   pg
   rails (= 4.2.0)
   rails_12factor
+  remotipart (~> 1.2)
   roo
   rubyzip
   sass-rails (~> 5.0)

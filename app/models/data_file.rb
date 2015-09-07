@@ -69,6 +69,40 @@ class DataFile < ActiveRecord::Base
       end
     end
 
+    DataFile.analyze_reactions
+  end
+
+  def self.analyze_reactions 
+    MicResult.all.each do |mic_result|
+
+      breakpoints = ClsiBreakpoint.determine_breakpoint(mic_result.isolate_id, mic_result.drug_id)
+
+      breakpoints.each do |breakpoint|
+        reaction, 
+        eligible_interpretations, 
+        used_surrogate_drug_id, 
+        used_surrogate_drug_ordinal, 
+        used_surrogate_rule_type = breakpoint.reaction(mic_result)
+
+        isolate_drug_reaction = IsolateDrugReaction.new
+
+        isolate_drug_reaction.authority = "CLSI"
+        isolate_drug_reaction.publication = "2015"
+        isolate_drug_reaction.delivery_mechanism = breakpoint.delivery_mechanism
+        isolate_drug_reaction.infection_type = breakpoint.infection_type
+        isolate_drug_reaction.isolate_id = mic_result.isolate_id
+        isolate_drug_reaction.drug_id = mic_result.drug_id
+        isolate_drug_reaction.reaction = reaction
+        isolate_drug_reaction.footnote = breakpoint.footnote
+        isolate_drug_reaction.eligible_interpretations = eligible_interpretations
+        isolate_drug_reaction.rule_row_number = breakpoint.rule_row_number
+        isolate_drug_reaction.used_surrogate_drug_id = used_surrogate_drug_id
+        isolate_drug_reaction.used_surrogate_drug_ordinal = used_surrogate_drug_ordinal
+        isolate_drug_reaction.used_surrogate_rule_type = used_surrogate_rule_type
+
+        isolate_drug_reaction.save
+      end
+    end
   end
 
   private 

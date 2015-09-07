@@ -1,0 +1,13 @@
+
+- if organisms.count > 0
+  = link_to "Download Results", isolate_drug_reactions_path(format: :xlsx), class: "button success small"
+
+  h2 Please choose an Isolate
+  - organisms.each do |organism|
+    h2
+      small = organism.name
+
+    - isolates = []
+    - isolates_by_organism_code[organism.code].each do |isolate|
+      - isolates << link_to(isolate.id, isolate_url(isolate))
+    p = isolates.join(", ").html_safe

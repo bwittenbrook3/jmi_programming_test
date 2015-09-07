@@ -62,7 +62,6 @@ class ClsiBreakpoint < ActiveRecord::Base
       eligible_interpretations = surrogate_drugs_elgible_values
       used_surrogate_drug_ordinal = 0
       used_surrogate_rule_type = "no_base_drug_breakpoints"
-      puts surrogate_drugs_reactions.to_s
       reaction = "S" if surrogate_drugs_reactions.include?("S")
       reaction = "I" if surrogate_drugs_reactions.include?("I")
       reaction = "R" if surrogate_drugs_reactions.include?("R")

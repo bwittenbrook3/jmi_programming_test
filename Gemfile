@@ -45,7 +45,10 @@ gem 'rubyzip'
 gem 'zip-zip'
 gem 'axlsx', '~> 2.0'
 gem 'axlsx_rails'
+gem 'acts_as_xlsx'
 
+gem 'remotipart', '~> 1.2'
+gem 'delayed_job_active_record'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console

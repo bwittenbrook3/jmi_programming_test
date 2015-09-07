@@ -5,7 +5,7 @@ class WelcomeController < ApplicationController
   end
 
   def download_isolate_drug_reactions
-    @mic_results = MicResult.all
+    @isolate_drug_reactions = IsolateDrugReaction.all
     respond_to do |format|
       format.xlsx
     end
