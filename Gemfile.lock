@@ -61,14 +61,21 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.9.1.1)
+    database_cleaner (1.4.0)
     debug_inspector (0.0.2)
     delayed_job (4.0.6)
       activesupport (>= 3.0, < 5.0)
     delayed_job_active_record (4.0.3)
       activerecord (>= 3.0, < 5.0)
       delayed_job (>= 3.0, < 4.1)
+    diff-lcs (1.2.5)
     erubis (2.7.0)
     execjs (2.6.0)
+    factory_girl (4.5.0)
+      activesupport (>= 3.0.0)
+    factory_girl_rails (4.5.0)
+      factory_girl (~> 4.5.0)
+      railties (>= 3.0.0)
     foundation-rails (5.5.2.1)
       railties (>= 3.1.0)
       sass (>= 3.3.0, < 3.5)
@@ -135,6 +142,23 @@ GEM
       nokogiri
       rubyzip
       spreadsheet (> 0.6.4)
+    rspec-core (3.2.2)
+      rspec-support (~> 3.2.0)
+    rspec-expectations (3.2.0)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.2.0)
+    rspec-mocks (3.2.1)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.2.0)
+    rspec-rails (3.2.1)
+      actionpack (>= 3.0, < 4.3)
+      activesupport (>= 3.0, < 4.3)
+      railties (>= 3.0, < 4.3)
+      rspec-core (~> 3.2.0)
+      rspec-expectations (~> 3.2.0)
+      rspec-mocks (~> 3.2.0)
+      rspec-support (~> 3.2.0)
+    rspec-support (3.2.2)
     ruby-ole (1.2.11.8)
     rubyzip (1.0.0)
     sass (3.4.18)
@@ -197,7 +221,9 @@ DEPENDENCIES
   axlsx_rails
   byebug
   coffee-rails (~> 4.1.0)
+  database_cleaner
   delayed_job_active_record
+  factory_girl_rails (~> 4.0)
   foundation-rails
   iconv
   jbuilder (~> 2.0)
@@ -207,6 +233,7 @@ DEPENDENCIES
   rails_12factor
   remotipart (~> 1.2)
   roo
+  rspec-rails (~> 3.0)
   rubyzip
   sass-rails (~> 5.0)
   sdoc (~> 0.4.0)
