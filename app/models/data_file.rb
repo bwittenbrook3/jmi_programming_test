@@ -75,14 +75,9 @@ class DataFile < ActiveRecord::Base
   def self.analyze_reactions 
     MicResult.all.each do |mic_result|
 
-      breakpoints = ClsiBreakpoint.determine_breakpoint(mic_result.isolate_id, mic_result.drug_id)
-
-      breakpoints.each do |breakpoint|
-        reaction, 
-        eligible_interpretations, 
-        used_surrogate_drug_id, 
-        used_surrogate_drug_ordinal, 
-        used_surrogate_rule_type = breakpoint.reaction(mic_result)
+      breakpoint = ClsiBreakpoint.determine_breakpoint(mic_result.isolate, mic_result.drug)
+      if breakpoint
+        results = breakpoint.analyze(mic_result)
 
         isolate_drug_reaction = IsolateDrugReaction.new
 
@@ -92,15 +87,15 @@ class DataFile < ActiveRecord::Base
         isolate_drug_reaction.infection_type = breakpoint.infection_type
         isolate_drug_reaction.isolate_id = mic_result.isolate_id
         isolate_drug_reaction.drug_id = mic_result.drug_id
-        isolate_drug_reaction.reaction = reaction
+        isolate_drug_reaction.reaction = results[:interpretation]
         isolate_drug_reaction.footnote = breakpoint.footnote
-        isolate_drug_reaction.eligible_interpretations = eligible_interpretations
+        isolate_drug_reaction.eligible_interpretations = results[:eligible_interpretations]
         isolate_drug_reaction.rule_row_number = breakpoint.rule_row_number
-        isolate_drug_reaction.used_surrogate_drug_id = used_surrogate_drug_id
-        isolate_drug_reaction.used_surrogate_drug_ordinal = used_surrogate_drug_ordinal
-        isolate_drug_reaction.used_surrogate_rule_type = used_surrogate_rule_type
+        isolate_drug_reaction.used_surrogate_drug_id = results[:used_surrogate_drug_id] || "NULL"
+        isolate_drug_reaction.used_surrogate_drug_ordinal = results[:used_surrogate_drug_ordinal] || "NULL"
+        isolate_drug_reaction.used_surrogate_rule_type = results[:used_surrogate_rule_type] || "NULL"
 
-        isolate_drug_reaction.save
+        isolate_drug_reaction.save!
       end
     end
   end

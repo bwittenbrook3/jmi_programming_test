@@ -8,6 +8,8 @@
       small = organism.name
 
     - isolates = []
-    - isolates_by_organism_code[organism.code].each do |isolate|
-      - isolates << link_to(isolate.id, isolate_url(isolate))
-    p = isolates.join(", ").html_safe
+    - isolates_for_organism = isolates_by_organism_code[organism.code]
+    - if isolates_for_organism
+      - isolates_for_organism.each do |isolate|
+        - isolates << link_to(isolate.id, isolate_url(isolate))
+      p = isolates.join(", ").html_safe

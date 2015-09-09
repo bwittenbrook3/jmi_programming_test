@@ -16,8 +16,7 @@ table
   - @drugs.each do |drug|
     tr 
       - mic_result = MicResult.where(drug_id: drug.id, isolate_id: @isolate.id).first
-      - breakpoints = ClsiBreakpoint.determine_breakpoint(@isolate.id, drug.id)
-      - breakpoint = breakpoints.last
+      - breakpoint = ClsiBreakpoint.determine_breakpoint(@isolate, drug)
 
       td = drug.name + " (" + drug.id.to_s + ")" 
       - unless mic_result.nil?
@@ -37,8 +36,8 @@ table
         - else
           td.center_text = ""
 
-        - unless breakpoint.nil?  
-          td.center_text = breakpoint.reaction(mic_result)[0]
+        - unless breakpoint.nil? || mic_result.nil?
+          td.center_text = breakpoint.analyze(mic_result)[:interpretation]
         - else
           td = ""
       - else

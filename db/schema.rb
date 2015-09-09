@@ -109,12 +109,17 @@ ActiveRecord::Schema.define(version: 20150909053705) do
   end
 
   create_table "organism_drug_breakpoints", force: :cascade do |t|
-    t.integer  "isolate_id"
+    t.integer  "organism_id"
     t.integer  "drug_id"
-    t.integer  "csli_breakpoint_id"
+    t.integer  "clsi_breakpoint_id"
+    t.integer  "priority"
     t.datetime "created_at",         null: false
     t.datetime "updated_at",         null: false
   end
+
+  add_index "organism_drug_breakpoints", ["clsi_breakpoint_id"], name: "index_organism_drug_breakpoints_on_clsi_breakpoint_id", using: :btree
+  add_index "organism_drug_breakpoints", ["drug_id"], name: "index_organism_drug_breakpoints_on_drug_id", using: :btree
+  add_index "organism_drug_breakpoints", ["organism_id"], name: "index_organism_drug_breakpoints_on_organism_id", using: :btree
 
   create_table "organisms", force: :cascade do |t|
     t.string   "code"

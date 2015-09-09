@@ -1,11 +1,11 @@
 class ClsiBreakpoint < ActiveRecord::Base
   has_one :isolate_drug_breakpoint
-  has_one :drug, through: :isolate_drug_breakpoint
+  belongs_to :drug
 
   has_many :surrogate_drug_assignments
   has_many :surrogate_drugs, through: :surrogate_drug_assignments
 
-  after_create :related_organism_codes
+  after_create :identify_related_organism_codes
 
   def analyze(mic_result)
     # Return nil if no mic_result is supplied
@@ -21,116 +21,205 @@ class ClsiBreakpoint < ActiveRecord::Base
     # Identify eligible interpretations between the drug and the isolate based on
     # this CLSI breakpoint.
     results[:eligible_interpretations] = determine_eligible_interpretations
-
     reaction = interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
     results[:interpretation] = reaction[:interpretation]
-
+    results[:used_surrogate_drug_id] = reaction[:used_surrogate_drug_id]
+    results[:used_surrogate_drug_ordinal] = reaction[:used_surrogate_drug_ordinal]
+    results[:used_surrogate_rule_type] = reaction[:used_surrogate_rule_type]
 
     return results
   end
 
-  # JASON: outer loop calling this method is looping over all mic results
-  # JASON: This method returns all breakpoints that apply to the current
-  # JASON: isolate's orgcode and current mic result's drug
-  # JASON: (may be multiple ones if there are different authorities/
-  # JASON: publications/ delivery mechanisms/infection types)
-  # JASON: should split breakpoint.related_organism_codes column into
-  # JASON: sub table and add database constraint so can only have one
-  # JASON: breakpoint rule defined for any given combination of
-  # JASON: auth/pub/deliv/infec/orgcode/drug
   def self.determine_breakpoint(isolate, drug)
-    return nil if isolate.nil? || drug.nil?
-    breakpoints = []
-    drug.clsi_breakpoints.each do |breakpoint|
-      puts breakpoint.related_organism_codes
-      if breakpoint.related_organism_codes.split(", ").include?(isolate.organism_code)
-        breakpoints << breakpoint
-      end
-    end
-    return breakpoints
+    organism_drug_breakpoint =  OrganismDrugBreakpoint.where(organism_id: isolate.organism.id, drug_id: drug.id).first
+    return organism_drug_breakpoint.clsi_breakpoint if organism_drug_breakpoint
+    return nil
   end
 
-  def related_organism_codes
-    return related_organism_codes_list unless related_organism_codes_list.nil?
-    organisms_codes = []
+  def interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
+    return nil if mic_result.nil?
+
+    results = Hash.new
+
+    # Use the breakpoints contained within this breakpoint
+    results[:interpretation] = interpet_reaction_from_breakpoints(mic_result)
+
+    # If we have surrogate drug reaction interpretations, we need to process additional information
+    unless surrogate_drug_reaction_interpretations.nil?
+
+      # We loop through each surrogate drug reaction interpretation
+      surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_results|
+
+        # Apply the r_if_surrogate_is logic to the interpretation
+        unless r_if_surrogate_is.nil?
+          results[:interpretation] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_results[:interpretation])
+        end
+
+        # Apply the ni_if_surrogate_is logic to the interpretation
+        unless ni_if_surrogate_is.nil?
+          results[:interpretation] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_results[:interpretation])
+        end
+
+      end # end the loop through each surrogate drug reaction interpretation
+    end
+
+    # If we still have not found a reaction interpretation and we have surrogate drug reaction 
+    # interpretations,then we need to pick the drug reaction in order.
+    if results[:interpretation].nil? && !surrogate_drug_reaction_interpretations.nil?
+      results[:used_surrogate_drug_ordinal] = 0
+      results[:used_surrogate_rule_type] = "no_base_drug_breakpoints"
+
+      surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_results|
+
+        # This logic loads the surrogate_drug_interpretation that has the highest resistance.
+        # "R" <= "I" <= "S"
+        if surrogate_drug_results[:interpretation] == "S" && 
+          (results[:interpretation] != "I" || results[:interpretation] != "R")
+          results[:interpretation] = surrogate_drug_results[:interpretation]
+          results[:used_surrogate_drug_id] = surrogate_drug.id
+        elsif surrogate_drug_results[:interpretation] == "I" && intepretation[:interpretation] != "R"
+          results[:interpretation] = surrogate_drug_results[:interpretation]
+          results[:used_surrogate_drug_id] = surrogate_drug.id
+        elsif surrogate_drug_results[:interpretation] == "R"
+          results[:interpretation] = surrogate_drug_results[:interpretation]
+          results[:used_surrogate_drug_id] = surrogate_drug.id
+        end
+
+      end
+    end
+
+    # Return the result
+    return results 
+  end
+
+  private
+
+  def identify_related_organism_codes
+    #return related_organism_codes_list unless related_organism_codes_list.nil?
+    
+    # Higher priority is a stronger match
+    priority_based_organism_codes = Hash.new
+    (1..7).each do |i|
+      priority_based_organism_codes[i] = []
+    end
 
     # master_group_include
     unless master_group_include.nil?
       Organism.where(master_group: master_group_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+        priority_based_organism_codes[1] << organism_code
       end
     end
 
     # organism_group_include
     unless organism_group_include.nil?
       Organism.where(group: organism_group_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+        priority_based_organism_codes[2] << organism_code
       end
     end
 
     # viridans_group_include
     unless viridans_group_include.nil?
       Organism.where(viridans_group: viridans_group_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+        priority_based_organism_codes[3] << organism_code
       end
     end
 
     # genus_include
     unless genus_include.nil?
       Organism.where(genus: genus_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+        priority_based_organism_codes[4] << organism_code
       end
     end
     
-
     # genus_exclude 
-    unless organism_group_include.nil?
-      Organism.where(genus: organism_group_include).pluck(:code).each do |organism_code|
-        organisms_codes.delete(organism_code)
+    unless genus_exclude.nil?
+      Organism.where(genus: genus_exclude).pluck(:code).each do |organism_code|
+        (1..7).each do |i|
+          priority_based_organism_codes[i].delete(organism_code)
+        end
       end
     end
 
     # organism_code_include
     unless organism_code_include.nil?
       organism_code_include.split(",").each do |organism_code|
-        organisms_codes << organism_code
+        priority_based_organism_codes[5] << organism_code
       end
     end
 
     #organism_code_exclude
     unless organism_code_exclude.nil?
       organism_code_exclude.split(",").each do |organism_code|
-        organisms_codes.delete(organism_code)
+        (1..7).each do |i|
+          priority_based_organism_codes[i].delete(organism_code)
+        end
       end
     end
 
     # level_1_include
     unless level_1_include.nil?
       Organism.where(level_1_class: level_1_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+         priority_based_organism_codes[6] << organism_code
       end
     end
 
     # level_3_include
     unless level_3_include.nil?
       Organism.where(level_3_class: level_3_include).pluck(:code).each do |organism_code|
-        organisms_codes << organism_code
+         priority_based_organism_codes[7] << organism_code
       end
     end
 
     # level_3_exclude
     unless level_3_exclude.nil?
       Organism.where(level_3_class: level_3_exclude).pluck(:code).each do |organism_code|
-        organisms_codes.deleteorganism_code
+        (1..7).each do |i|
+          priority_based_organism_codes[i].delete(organism_code)
+        end
       end
     end
 
-    self.related_organism_codes_list = organisms_codes.join(", ")
-    self.save!
-    return related_organism_codes_list
+    #self.related_organism_codes_list.values = organisms_codes.join(", ")
+    #self.save!
+
+    create_organism_drug_breakpoints_for(priority_based_organism_codes)
   end
 
-  private
+  def create_organism_drug_breakpoints_for(priority_based_organism_codes)
+
+    priority_based_organism_codes.each do |priority, organism_codes|
+      organism_codes.each do |organism_code|
+        organism = Organism.where(code: organism_code).first_or_create ## <== Not sure about the or_create here
+
+        match_found = false
+        OrganismDrugBreakpoint.where(organism_id: organism.id, drug_id: drug.id).each do |organism_drug_breakpoint|
+          breakpoint = organism_drug_breakpoint.clsi_breakpoint
+          if delivery_mechanism ==  breakpoint.delivery_mechanism &&
+            infection_type == breakpoint.infection_type
+
+            if organism_drug_breakpoint.priority < priority
+              # Update the breakpoint matching information
+              organism_drug_breakpoint.priority = priority
+              organism_drug_breakpoint.clsi_breakpoint_id = id 
+              organism_drug_breakpoint.save!
+            end
+
+            match_found = true
+          end
+        end
+
+        unless match_found
+          OrganismDrugBreakpoint.create(  organism_id: organism.id, 
+                                          drug_id: drug.id,
+                                          clsi_breakpoint_id: id,
+                                          priority: priority         )
+        end
+      end
+    end
+  end
+
+
+
 
   ## Will return the reaction interpretation based on this s_max and r_min 
   ## values contained within this breakpoint.
@@ -214,84 +303,27 @@ class ClsiBreakpoint < ActiveRecord::Base
     end
   end
 
-  def interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
-    return nil if mic_result.nil?
-
-    results = Hash.new
-
-    # Use the breakpoints contained within this breakpoint
-    results[:interpretation] = interpet_reaction_from_breakpoints(mic_result)
-
-    # If we have surrogate drug reaction interpretations, we need to process additional information
-    unless surrogate_drug_reaction_interpretations.nil?
-
-      # We loop through each surrogate drug reaction interpretation
-      surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_interpretation|
-
-        # Apply the r_if_surrogate_is logic to the interpretation
-        unless r_if_surrogate_is.nil?
-          results[:interpretation] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
-        end
-
-        # Apply the ni_if_surrogate_is logic to the interpretation
-        unless ni_if_surrogate_is.nil?
-          results[:interpretation] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
-        end
-
-      end # end the loop through each surrogate drug reaction interpretation
-    end
-
-    # If we still have not found a reaction interpretation and we have surrogate drug reaction 
-    # interpretations,then we need to pick the drug reaction in order.
-    if results[:interpretation].nil? && !surrogate_drug_reaction_interpretations.nil?
-      results[:used_surrogate_drug_ordinal] = 0
-      results[:used_surrogate_rule_type] = "no_base_drug_breakpoints"
-
-      surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_interpretation|
-
-        # This logic loads the surrogate_drug_interpretation that has the highest resistance.
-        # "R" <= "I" <= "S"
-        if surrogate_drug_interpretation == "S" && 
-          (results[:interpretation] != "I" || results[:interpretation] != "R")
-          results[:interpretation] = surrogate_drug_interpretation
-          results[:used_surrogate_drug_id] = surrogate_drug.id
-        elsif surrogate_drug_interpretation == "I" && intepretation[:interpretation] != "R"
-          results[:interpretation] = surrogate_drug_interpretation
-          results[:used_surrogate_drug_id] = surrogate_drug.id
-        elsif surrogate_drug_interpretation == "R"
-          results[:interpretation] = surrogate_drug_interpretation
-          results[:used_surrogate_drug_id] = surrogate_drug.id
-        end
-
-      end
-    end
-
-    # Return the result
-    return results 
-  end
 
   # !!!Important!!! Surrogate drugs will never have a surrogate themselves. 
   # Therefore we pull out the surrogate interpretation to avoid infite recursive loops.
   def interpret_surrogate_drug_reactions(isolate)
     return nil if isolate.nil?
 
-    intepretation = []
+    intepretation = Hash.new
 
     # For each surrogate drug, 
     surrogate_drugs.each do |surrogate_drug|
 
       # find a the mic_result for that drug and the input isolate. 
-      mic_result = MicResult.where(drug_id: surrogate_drug.id, isolate_id: mic_result.isolate_id).first
+      mic_result = MicResult.where(drug_id: surrogate_drug.id, isolate_id: isolate.id).first
 
       # If we found a mic_result, find the breakpoint we should use for comparision.
       # TODO: Rework determine breakpoint logic so we don't just use the first breakpoint found. 
-      breakpoint = ClsiBreakpoint.determine_breakpoint(isolate, surrogate_drug).first unless mic_result.nil?
+      breakpoint = ClsiBreakpoint.determine_breakpoint(isolate, surrogate_drug) unless mic_result.nil?
 
       # Load each of the surrogate drug reaction interpretations into a hash array with the drug.id 
       # as the key to that value.
-      surrogate_drug_intepretation = Hash.new
-      surrogate_drug_intepretation[surrogate_drug] = breakpoint.interpret_reaction(mic_result, nil)
-
+      intepretation[surrogate_drug] = breakpoint.interpret_reaction(mic_result, nil) if breakpoint
     end
 
     return intepretation
