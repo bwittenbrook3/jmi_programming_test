@@ -11,14 +11,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150909053705) do
+ActiveRecord::Schema.define(version: 20150909184525) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
   create_table "clsi_breakpoints", force: :cascade do |t|
-    t.decimal  "s_maximum",                   precision: 10, scale: 2
-    t.decimal  "r_minimum",                   precision: 10, scale: 2
+    t.decimal  "s_maximum",                   precision: 9, scale: 5
+    t.decimal  "r_minimum",                   precision: 9, scale: 5
     t.string   "r_if_surrogate_is"
     t.string   "ni_if_surrogate_is"
     t.string   "r_if_blt_is"
@@ -39,8 +39,8 @@ ActiveRecord::Schema.define(version: 20150909053705) do
     t.string   "related_organism_codes_list"
     t.integer  "rule_row_number"
     t.integer  "drug_id"
-    t.datetime "created_at",                                           null: false
-    t.datetime "updated_at",                                           null: false
+    t.datetime "created_at",                                          null: false
+    t.datetime "updated_at",                                          null: false
   end
 
   create_table "data_files", force: :cascade do |t|

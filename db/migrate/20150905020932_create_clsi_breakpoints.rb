@@ -1,7 +1,7 @@
 class CreateClsiBreakpoints < ActiveRecord::Migration
   def change
     create_table :clsi_breakpoints do |t|
-      t.decimal :s_maximum, precision: 10 , scale: 2
+      t.decimal :s_maximum, precision: 10 , scale: 5
       t.decimal :r_minimum, precision: 10 , scale: 2
       t.string :r_if_surrogate_is
       t.string :ni_if_surrogate_is

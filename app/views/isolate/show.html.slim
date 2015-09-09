@@ -16,7 +16,8 @@ table
   - @drugs.each do |drug|
     tr 
       - mic_result = MicResult.where(drug_id: drug.id, isolate_id: @isolate.id).first
-      - breakpoint = ClsiBreakpoint.determine_breakpoint(@isolate, drug)
+      - breakpoints = ClsiBreakpoint.determine_breakpoint(@isolate, drug) || []
+      - breakpoint = breakpoints.first
 
       td = drug.name + " (" + drug.id.to_s + ")" 
       - unless mic_result.nil?

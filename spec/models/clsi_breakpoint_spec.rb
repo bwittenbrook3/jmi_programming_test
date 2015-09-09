@@ -332,8 +332,70 @@ RSpec.describe ClsiBreakpoint, type: :model do
         it { is_expected.to include(:eligible_interpretations => "S I R") } 
         it { is_expected.to include(:interpretation => "R") }
       end
-
     end
+  end
+
+  describe "#determine_eligible_interpretations" do
+
+    context "{s_max: nil, r_min: nil}" do 
+      let(:breakpoint) { FactoryGirl.create :empty_breakpoint }
+      subject { breakpoint.send(:determine_eligible_interpretations) }
+      it { is_expected.to be_nil }
+    end
+
+    context "{s_max: 1.0, r_min: nil}" do
+      let(:breakpoint) { FactoryGirl.create :no_r_minimum_breakpoint }
+      subject { breakpoint.send(:determine_eligible_interpretations) }
+      it { is_expected.to eq("S NS") }
+    end
+
+    context "{s_max: 2.0, r_min: 4.0}" do 
+      let(:breakpoint) { FactoryGirl.create :zero_dilution_breakpoint }
+      subject { breakpoint.send(:determine_eligible_interpretations) }
+      it { is_expected.to eq("S R") }
+    end
+
+    context "{s_max: 2.0, r_min: 8.0}" do 
+      let(:breakpoint) { FactoryGirl.create :one_dilution_breakpoint }
+      subject { breakpoint.send(:determine_eligible_interpretations) }
+      it { is_expected.to eq("S I R") }
+    end
+  end
+
+  describe "#interpret_surrogate_drug_reactions" do
+
+    context "(nil)" do 
+      let (:breakpoint) { FactoryGirl.create :breakpoint_with_one_surrogate_drug }
+      subject { breakpoint.send(:interpret_surrogate_drug_reactions, nil) }
+      it { is_expected.to be_nil }
+    end
+
+    context "(isolate)" do 
+      let (:isolate) { FactoryGirl.create :isolate }
+
+      context "breakpoint.surrogate drugs: nil" do 
+        let (:breakpoint) { FactoryGirl.create :standard_breakpoint }
+        specify { expect(breakpoint.surrogate_drugs.count).to eq(0) }
+        subject { breakpoint.send(:interpret_surrogate_drug_reactions, isolate) }
+        it { is_expected.to be_nil }
+      end
+
+      context "breakpoint.surrogate drugs: {surrogate_drug}" do 
+
+        it "should interpret the surrogate drug reactions correctly" do 
+          organism = FactoryGirl.create(:organism)
+          alternate_organism = FactoryGirl.create(:alternate_organism)
+          breakpoint = FactoryGirl.create(:breakpoint_with_one_surrogate_drug)
+          surrogate_drug = breakpoint.surrogate_drugs.first
+          mic_result = FactoryGirl.create(:mic_result, drug_id: surrogate_drug.id, isolate_id: isolate.id)
+
+          # s_max: 1, r_min: 4, mic_value: 1, mic_edge: 0
+          interpret_surrogate_drug_reactions = breakpoint.send(:interpret_surrogate_drug_reactions, isolate)
+          expect(interpret_surrogate_drug_reactions[surrogate_drug]).to include(:interpretation => "S")
+        end
+      end
+    end
+
   end
 
 end

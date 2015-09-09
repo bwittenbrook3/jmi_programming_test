@@ -75,8 +75,8 @@ class DataFile < ActiveRecord::Base
   def self.analyze_reactions 
     MicResult.all.each do |mic_result|
 
-      breakpoint = ClsiBreakpoint.determine_breakpoint(mic_result.isolate, mic_result.drug)
-      if breakpoint
+    breakpoints = ClsiBreakpoint.determine_breakpoint(mic_result.isolate, mic_result.drug) || []
+      breakpoints.each do |breakpoint|
         results = breakpoint.analyze(mic_result)
 
         isolate_drug_reaction = IsolateDrugReaction.new

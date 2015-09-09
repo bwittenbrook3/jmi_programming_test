@@ -31,8 +31,16 @@ class ClsiBreakpoint < ActiveRecord::Base
   end
 
   def self.determine_breakpoint(isolate, drug)
-    organism_drug_breakpoint =  OrganismDrugBreakpoint.where(organism_id: isolate.organism.id, drug_id: drug.id).first
-    return organism_drug_breakpoint.clsi_breakpoint if organism_drug_breakpoint
+    return nil if isolate.nil? || drug.nil?
+
+    # Seach for all 'unique' breakpoints for the organism - drug combination 
+    breakpoints = []
+    OrganismDrugBreakpoint.where(organism_id: isolate.organism.id, drug_id: drug.id).each do |organism_drug_breakpoint|
+      breakpoints << organism_drug_breakpoint.clsi_breakpoint
+    end
+
+    # If we found matching breakpoints then return those
+    return breakpoints if breakpoints.length > 0
     return nil
   end
 
@@ -49,15 +57,18 @@ class ClsiBreakpoint < ActiveRecord::Base
 
       # We loop through each surrogate drug reaction interpretation
       surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_results|
+        surrogate_drug_results.each do |surrogate_drug_result|
 
-        # Apply the r_if_surrogate_is logic to the interpretation
-        unless r_if_surrogate_is.nil?
-          results[:interpretation] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_results[:interpretation])
-        end
+          # Apply the r_if_surrogate_is logic to the interpretation
+          unless r_if_surrogate_is.nil? 
+            results[:interpretation] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_result[:interpretation])
+          end
 
-        # Apply the ni_if_surrogate_is logic to the interpretation
-        unless ni_if_surrogate_is.nil?
-          results[:interpretation] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_results[:interpretation])
+          # Apply the ni_if_surrogate_is logic to the interpretation
+          unless ni_if_surrogate_is.nil?
+            results[:interpretation] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_result[:interpretation])
+          end
+
         end
 
       end # end the loop through each surrogate drug reaction interpretation
@@ -70,21 +81,23 @@ class ClsiBreakpoint < ActiveRecord::Base
       results[:used_surrogate_rule_type] = "no_base_drug_breakpoints"
 
       surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_results|
+        surrogate_drug_results.each do |surrogate_drug_result|
 
-        # This logic loads the surrogate_drug_interpretation that has the highest resistance.
-        # "R" <= "I" <= "S"
-        if surrogate_drug_results[:interpretation] == "S" && 
-          (results[:interpretation] != "I" || results[:interpretation] != "R")
-          results[:interpretation] = surrogate_drug_results[:interpretation]
-          results[:used_surrogate_drug_id] = surrogate_drug.id
-        elsif surrogate_drug_results[:interpretation] == "I" && intepretation[:interpretation] != "R"
-          results[:interpretation] = surrogate_drug_results[:interpretation]
-          results[:used_surrogate_drug_id] = surrogate_drug.id
-        elsif surrogate_drug_results[:interpretation] == "R"
-          results[:interpretation] = surrogate_drug_results[:interpretation]
-          results[:used_surrogate_drug_id] = surrogate_drug.id
+          # This logic loads the surrogate_drug_interpretation that has the highest resistance.
+          # "R" <= "I" <= "S"
+          if surrogate_drug_result[:interpretation] == "S" && 
+            (results[:interpretation] != "I" || results[:interpretation] != "R")
+            results[:interpretation] = surrogate_drug_result[:interpretation]
+            results[:used_surrogate_drug_id] = surrogate_drug.id
+          elsif surrogate_drug_result[:interpretation] == "I" && intepretation[:interpretation] != "R"
+            results[:interpretation] = surrogate_drug_result[:interpretation]
+            results[:used_surrogate_drug_id] = surrogate_drug.id
+          elsif surrogate_drug_result[:interpretation] == "R"
+            results[:interpretation] = surrogate_drug_result[:interpretation]
+            results[:used_surrogate_drug_id] = surrogate_drug.id
+          end
+
         end
-
       end
     end
 
@@ -314,19 +327,23 @@ class ClsiBreakpoint < ActiveRecord::Base
     # For each surrogate drug, 
     surrogate_drugs.each do |surrogate_drug|
 
-      # find a the mic_result for that drug and the input isolate. 
+      # Note: Only one mic_result could exists for any drug - isolate combination
       mic_result = MicResult.where(drug_id: surrogate_drug.id, isolate_id: isolate.id).first
 
       # If we found a mic_result, find the breakpoint we should use for comparision.
-      # TODO: Rework determine breakpoint logic so we don't just use the first breakpoint found. 
-      breakpoint = ClsiBreakpoint.determine_breakpoint(isolate, surrogate_drug) unless mic_result.nil?
-
-      # Load each of the surrogate drug reaction interpretations into a hash array with the drug.id 
-      # as the key to that value.
-      intepretation[surrogate_drug] = breakpoint.interpret_reaction(mic_result, nil) if breakpoint
+      if mic_result
+        breakpoints = ClsiBreakpoint.determine_breakpoint(isolate, surrogate_drug) || []
+        intepretation[surrogate_drug] = [] if breakpoints.length > 0
+        breakpoints.each do |breakpoint|
+          # Load each of the surrogate drug reaction interpretations into a hash array with the drug.id 
+          # as the key to that value.
+          intepretation[surrogate_drug] << breakpoint.interpret_reaction(mic_result, nil)
+        end
+      end
     end
 
-    return intepretation
+    return intepretation if intepretation.size > 0
+    return nil
   end
 
   def determine_eligible_interpretations
