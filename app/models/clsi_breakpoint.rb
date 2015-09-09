@@ -1,5 +1,7 @@
 class ClsiBreakpoint < ActiveRecord::Base
-  belongs_to :drug
+  has_one :isolate_drug_breakpoint
+  has_one :drug, through: :isolate_drug_breakpoint
+
   has_many :surrogate_drug_assignments
   has_many :surrogate_drugs, through: :surrogate_drug_assignments
 
@@ -20,16 +22,13 @@ class ClsiBreakpoint < ActiveRecord::Base
     # this CLSI breakpoint.
     results[:eligible_interpretations] = determine_eligible_interpretations
 
-    reaction_interpretation = interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
-    results[:interpretation] = reaction_interpretation[:reaction]
+    reaction = interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
+    results[:interpretation] = reaction[:interpretation]
 
 
     return results
   end
 
-  # JASON: mic_results is unused
-  # JASON: should pass in Isolate instead of isolate_id ?
-  # JASON: should pass in Drug instead of drug_id ?
   # JASON: outer loop calling this method is looping over all mic results
   # JASON: This method returns all breakpoints that apply to the current
   # JASON: isolate's orgcode and current mic result's drug
@@ -39,12 +38,11 @@ class ClsiBreakpoint < ActiveRecord::Base
   # JASON: sub table and add database constraint so can only have one
   # JASON: breakpoint rule defined for any given combination of
   # JASON: auth/pub/deliv/infec/orgcode/drug
-  def self.determine_breakpoint(isolate_id, drug_id)
-    isolate = Isolate.find(isolate_id)
-    drug = Drug.find(drug_id)
-    mic_results = MicResult.where(isolate_id: isolate_id, drug_id: drug_id)
+  def self.determine_breakpoint(isolate, drug)
+    return nil if isolate.nil? || drug.nil?
     breakpoints = []
     drug.clsi_breakpoints.each do |breakpoint|
+      puts breakpoint.related_organism_codes
       if breakpoint.related_organism_codes.split(", ").include?(isolate.organism_code)
         breakpoints << breakpoint
       end
@@ -134,32 +132,95 @@ class ClsiBreakpoint < ActiveRecord::Base
 
   private
 
-  def reaction_results(mic_result)
-    if mic_result.mic_edge == 1
-      # TODO replace with DILUTION_VALUES increment
-      return "NI" if (mic_result.mic_value * 2.0) <= s_maximum
-    elsif mic_result.mic_edge == -1 && !r_minimum.nil?
-      # TODO replace with DILUTION_VALUES increment
-      if (r_minimum / 2.0) <= s_maximum
-        return "NI" if mic_result.mic_value >= r_minimum
+  ## Will return the reaction interpretation based on this s_max and r_min 
+  ## values contained within this breakpoint.
+  ## KEYS:  S - Susceptible
+  ##        I - Intermediate
+  ##        R - Resistant
+  ##        NS - Not Susceptible
+  ##        NI - No Interpretation
+  def interpet_reaction_from_breakpoints(mic_result)
+    return nil if mic_result.nil?
+    return nil if mic_result.mic_edge.nil? || mic_result.mic_value.nil? 
+    return nil if s_maximum.nil?
+
+    dillution_index_between_r_and_s = Dilution.index_between(s_maximum, r_minimum)
+
+    # The actual mic_value is lower than OR equal to the measured dillution.
+    if mic_result.mic_edge == -1
+
+      if mic_result.mic_value <= s_maximum
+        # <=mic_value -- s_max
+        return "S"
       else
-        return "NI" if (mic_result.mic_value / 2.0) >= r_minimum
+        if r_minimum
+          # NOTE if a -1 edge is equivalent to a logical <= then we can optimize the follwing
+          # if statement. Bradley to verify w/ Jason and Johny.
+          return "NI"
+        else
+          ## s_max -- <=mic_value 
+          return "S" if Dilution.index_between(s_maximum, mic_result.mic_value) == 1 
+          return "NI"
+        end
+      end
+
+    ## The actual mic_value is higher than the measured dillution.
+    elsif mic_result.mic_edge == 1
+
+      if mic_result.mic_value < s_maximum
+        ##  mic_value => s_max 
+        return "NI"
+      elsif mic_result.mic_value == s_maximum
+        if r_minimum
+          # s_max==mic_value=> -- r_min
+          return "R" if Dilution.index_between(r_minimum, mic_result.mic_value) == 1
+          return "NS"
+        else
+          # s_max==mic_value=>
+          return "NS"
+        end
+      else
+        if r_minimum
+          if mic_result.mic_value >= r_minimum
+            # s_max -- r_min = mic_value=>
+            return "R"
+          else 
+            # s_max -- mic_value=> -- r_min
+            return "R" if Dilution.index_between(r_minimum, mic_result.mic_value) == 1
+            return "NS"
+          end
+        end
+      end
+
+    else
+      # Defualt logic holds when the mic_edge value == 0
+      if mic_result.mic_value <= s_maximum
+        # mic_value -- s_max
+        return "S"
+      else
+        if r_minimum
+          if mic_result.mic_value < r_minimum
+            # s_max -- mic_value -- r_min
+            return "I"
+          else
+            # s_max -- r_min -- mic_value
+            return "R"
+          end
+        else
+          # s_max -- mic_value
+          return "NS"
+        end
       end
     end
-
-    return "S" if is_susptable?(mic_result)
-    return "R" if is_resistant?(mic_result)
-    return "I" if !s_maximum.nil? && !r_minimum.nil?
-    return "NS" if !s_maximum.nil? && r_minimum.nil?
-    return ""
   end
 
   def interpret_reaction(mic_result, surrogate_drug_reaction_interpretations)
     return nil if mic_result.nil?
 
-    interpretation = Hash.new
+    results = Hash.new
 
-    interpretation[:reaction] = reaction_results(mic_result)
+    # Use the breakpoints contained within this breakpoint
+    results[:interpretation] = interpet_reaction_from_breakpoints(mic_result)
 
     # If we have surrogate drug reaction interpretations, we need to process additional information
     unless surrogate_drug_reaction_interpretations.nil?
@@ -169,12 +230,12 @@ class ClsiBreakpoint < ActiveRecord::Base
 
         # Apply the r_if_surrogate_is logic to the interpretation
         unless r_if_surrogate_is.nil?
-          interpretation[:reaction] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
+          results[:interpretation] = "R" if r_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
         end
 
         # Apply the ni_if_surrogate_is logic to the interpretation
         unless ni_if_surrogate_is.nil?
-          interpretation[:reaction] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
+          results[:interpretation] = "NI" if ni_if_surrogate_is.split(",").include?(surrogate_drug_interpretation)
         end
 
       end # end the loop through each surrogate drug reaction interpretation
@@ -182,31 +243,31 @@ class ClsiBreakpoint < ActiveRecord::Base
 
     # If we still have not found a reaction interpretation and we have surrogate drug reaction 
     # interpretations,then we need to pick the drug reaction in order.
-    if interpretation[:reaction].nil? && !surrogate_drug_reaction_interpretations.nil?
-      interpretation[:used_surrogate_drug_ordinal] = 0
-      interpretation[:used_surrogate_rule_type] = "no_base_drug_breakpoints"
+    if results[:interpretation].nil? && !surrogate_drug_reaction_interpretations.nil?
+      results[:used_surrogate_drug_ordinal] = 0
+      results[:used_surrogate_rule_type] = "no_base_drug_breakpoints"
 
       surrogate_drug_reaction_interpretations.each do |surrogate_drug, surrogate_drug_interpretation|
 
         # This logic loads the surrogate_drug_interpretation that has the highest resistance.
         # "R" <= "I" <= "S"
         if surrogate_drug_interpretation == "S" && 
-          (intepretation[:reaction] != "I" || intepretation[:reaction] != "R")
-          intepretation[:reaction] = surrogate_drug_interpretation
-          interpretation[:used_surrogate_drug_id] = surrogate_drug.id
-        elsif surrogate_drug_interpretation == "I" && intepretation[:reaction] != "R"
-          intepretation[:reaction] = surrogate_drug_interpretation
-          interpretation[:used_surrogate_drug_id] = surrogate_drug.id
+          (results[:interpretation] != "I" || results[:interpretation] != "R")
+          results[:interpretation] = surrogate_drug_interpretation
+          results[:used_surrogate_drug_id] = surrogate_drug.id
+        elsif surrogate_drug_interpretation == "I" && intepretation[:interpretation] != "R"
+          results[:interpretation] = surrogate_drug_interpretation
+          results[:used_surrogate_drug_id] = surrogate_drug.id
         elsif surrogate_drug_interpretation == "R"
-          intepretation[:reaction] = surrogate_drug_interpretation
-          interpretation[:used_surrogate_drug_id] = surrogate_drug.id
+          results[:interpretation] = surrogate_drug_interpretation
+          results[:used_surrogate_drug_id] = surrogate_drug.id
         end
 
       end
     end
 
     # Return the result
-    return interpretation 
+    return results 
   end
 
   # !!!Important!!! Surrogate drugs will never have a surrogate themselves. 
@@ -237,58 +298,16 @@ class ClsiBreakpoint < ActiveRecord::Base
   end
 
   def determine_eligible_interpretations
-    if s_maximum.nil?
-      if r_minimum.nil?
-        eligible_interpretations = ""
-      end
+    return nil if s_maximum.nil? && r_minimum.nil?
+
+    # If s_max or r_min exists, then s_max must exist
+    if r_minimum 
+      # Only S & R are elgible if there are zero dilutions between 
+      # s_max and r_min
+      return "S R" if Dilution.index_between(s_maximum, r_minimum) == 1
+      return "S I R"
     else
-      if r_minimum.nil?
-        eligible_interpretations = "S NS"
-      else
-        # JASON: clever, but assumes we only use doubling dilution
-        # JASON: ranges which may not be true for some MIC testing
-        # JASON: Need to implement concept of "ordinal" to know 
-        # JASON: whether there are any valid MIC values that lie 
-        # JASON: in between s_maximum and r_minimum
-        if (r_minimum / 2.0) <= s_maximum
-          eligible_interpretations = "S R"
-        else
-          eligible_interpretations = "S I R"
-        end
-      end
-    end
-  end
-
-  def interpretation_default_params
-    interpretations = Hash.new
-    interpretations[:reaction] = ""
-    interpretations[:eligible_interpretations] ="NULL"
-    interpretations[:used_surrogate_drug_id] = "NULL"
-    interpretations[:used_surrogate_drug_ordinal] = "NULL"
-    interpretations[:used_surrogate_rule_type] = "NULL"
-
-    return interpretations
-  end
-
-  def is_susptable?(mic_result)
-    # JASON: is self. necessary here since we're an instance method?
-    return false if self.s_maximum.nil?
-
-    # JASON: is self. necessary here since we're an instance method?
-    return mic_result.mic_edge <= 0 && mic_result.mic_value <= self.s_maximum
-  end
-
-  def is_resistant?(mic_result)
-    # JASON: is self. necessary here since we're an instance method?
-    return false if self.r_minimum.nil?
-
-    # JASON:  <=2 has mic,edge of 2.0, -1
-    # JASON:  if r_minimum is 2.0, this will call it resistant
-    # JASON:  but should be NI (no interp)
-    if mic_result.mic_edge <= 0 
-      return mic_result.mic_value >= self.r_minimum
-    else
-      return mic_result.mic_value >= (self.r_minimum / 2.0)
+      return "S NS"
     end
   end
 end
