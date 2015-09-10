@@ -22,7 +22,7 @@ class ClsiBreakpointValidator < ActiveModel::Validator
 
   def valid_s_max_r_min_combination?(s_max, r_min)
     return true if s_max.nil? || r_min.nil?
-    return false if valid_dilution?(s_max) || valid_dilution?(r_min)
+    return false if !valid_dilution?(s_max) || !valid_dilution?(r_min)
 
     s_max_dilution_index = Dilution.index_of(s_max)
     r_min_dilution_index = Dilution.index_of(r_min)
