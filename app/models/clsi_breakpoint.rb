@@ -7,6 +7,8 @@ class ClsiBreakpoint < ActiveRecord::Base
 
   after_create :identify_related_organism_codes
 
+  validates_with ClsiBreakpointValidator
+
   def analyze(mic_result)
     # Return nil if no mic_result is supplied
     return nil if mic_result.nil?
