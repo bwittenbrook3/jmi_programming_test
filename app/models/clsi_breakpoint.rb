@@ -198,25 +198,40 @@ class ClsiBreakpoint < ActiveRecord::Base
     create_organism_drug_breakpoints_for(priority_based_organism_codes)
   end
 
+
+  # Create the Organism/Drug/Breakpoint relationship in the database.
+  # !! Important !! Only one breakpoint (including meta data - delivery mechnism / infection_type) 
+  # should exist per Organism/Drug combination. However, more than one breakpoint can exist as long 
+  # as they each breakpoint has different (delivery mechnism / infection_type).
   def create_organism_drug_breakpoints_for(priority_based_organism_codes)
 
     priority_based_organism_codes.each do |priority, organism_codes|
       organism_codes.each do |organism_code|
-        organism = Organism.where(code: organism_code).first_or_create ## <== Not sure about the or_create here
 
+        # Load the organism based on the provided organism_code.
+        # If the organsim_code cannot be found, create the record.
+        organism = Organism.where(code: organism_code).first_or_create
+
+        # Initially set match found to false.
         match_found = false
+
+        # Pull all organism_drug_breakpoints for the provided organism - drug combination
         OrganismDrugBreakpoint.where(organism_id: organism.id, drug_id: drug.id).each do |organism_drug_breakpoint|
           breakpoint = organism_drug_breakpoint.clsi_breakpoint
-          if delivery_mechanism ==  breakpoint.delivery_mechanism &&
-            infection_type == breakpoint.infection_type
 
+          # Check to see if this breakpoint matches the same meta data as the one found.
+          if delivery_mechanism ==  breakpoint.delivery_mechanism && infection_type == breakpoint.infection_type
+
+            # If this breakpoint has a higher priority,
             if organism_drug_breakpoint.priority < priority
+
               # Update the breakpoint matching information
               organism_drug_breakpoint.priority = priority
               organism_drug_breakpoint.clsi_breakpoint_id = id 
               organism_drug_breakpoint.save!
             end
 
+            # Show that we found a match and we don't need to create a record
             match_found = true
           end
         end
