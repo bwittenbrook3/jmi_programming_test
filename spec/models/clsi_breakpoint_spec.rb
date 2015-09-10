@@ -333,6 +333,38 @@ RSpec.describe ClsiBreakpoint, type: :model do
         it { is_expected.to include(:interpretation => "R") }
       end
     end
+
+    context "breakpoint {s_max: nil, r_min: nil}" do 
+      let(:breakpoint) { FactoryGirl.create :empty_breakpoint } 
+      let(:mic_result) { FactoryGirl.create(:mic_result, mic_value: 1.0, mic_edge: 0) }
+
+      context "surrogate_drugs: {}" do 
+        subject { breakpoint.analyze(mic_result) }
+        it { is_expected.to include(:interpretation => nil) }
+      end
+ 
+      context "breakpoint: {surrogate_drugs: [surrogate_drug]}" do 
+        it "should use the surrogate breakpoint results" do 
+          organism = FactoryGirl.create(:organism)
+          alternate_organism = FactoryGirl.create(:alternate_organism)
+
+          isolate = FactoryGirl.create(:isolate)
+
+          drug = FactoryGirl.create(:surrogate_drug)
+          surrogate_drug = FactoryGirl.create(:surrogate_drug)
+
+          breakpoint = FactoryGirl.create(:empty_breakpoint, drug: drug)
+          breakpoint.surrogate_drugs << surrogate_drug
+          surrogate_breakpoint = FactoryGirl.create(:standard_breakpoint, drug: surrogate_drug)
+
+          mic_result = FactoryGirl.create(:mic_result, drug_id: drug.id, isolate_id: isolate.id)
+          surrogate_mic_result = FactoryGirl.create(:mic_result, drug_id: surrogate_drug.id, isolate_id: isolate.id)
+
+          result = breakpoint.analyze(mic_result)
+          expect(result).to include(:interpretation => "S")
+        end
+      end
+    end
   end
 
   describe "#determine_eligible_interpretations" do
