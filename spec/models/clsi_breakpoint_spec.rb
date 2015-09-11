@@ -18,19 +18,69 @@ RSpec.describe ClsiBreakpoint, type: :model do
     context "breakpoints: {s_min: 1.0, r_min: nil}" do
       let(:breakpoint) {FactoryGirl.create :no_r_minimum_breakpoint}
 
-      context "mic_result: {mic_value: 0.5}" do
-        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 0.5 }
+      context "mic_result: {mic_value: 0.5, mic_edge: -1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 0.5, mic_edge: -1 }
         subject { breakpoint.analyze(mic_value) }
         it { is_expected.to include(:eligible_interpretations => "S NS") } 
         it { is_expected.to include(:interpretation => "S") }
       end
 
-      context "mic_result: {mic_value: 4.0}" do
-        let(:mic_value) { FactoryGirl.create(:mic_result, mic_value: 4.0) }
+      context "mic_result: {mic_value: 0.5, mic_edge: 0 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 0.5, mic_edge: 0 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "S") }
+      end
+
+      context "mic_result: {mic_value: 0.5, mic_edge: 1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 0.5, mic_edge: 1 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "NI") }
+      end
+
+      context "mic_result: {mic_value: 1.0, mic_edge: -1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 1.0, mic_edge: -1 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "S") }
+      end
+
+      context "mic_result: {mic_value: 1.0, mic_edge: 0 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 1.0, mic_edge: 0 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "S") }
+      end
+
+      context "mic_result: {mic_value: 1.0, mic_edge: 1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 1.0, mic_edge: 1 }
         subject { breakpoint.analyze(mic_value) }
         it { is_expected.to include(:eligible_interpretations => "S NS") } 
         it { is_expected.to include(:interpretation => "NS") }
       end
+
+      context "mic_result: {mic_value: 2.0, mic_edge: -1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 2.0, mic_edge: -1 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "NI") }
+      end
+
+      context "mic_result: {mic_value: 2.0, mic_edge: 0 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 2.0, mic_edge: 0 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "NS") }
+      end
+
+      context "mic_result: {mic_value: 2.0, mic_edge: 1 }" do
+        let(:mic_value) { FactoryGirl.create :mic_result, mic_value: 2.0, mic_edge: 1 }
+        subject { breakpoint.analyze(mic_value) }
+        it { is_expected.to include(:eligible_interpretations => "S NS") } 
+        it { is_expected.to include(:interpretation => "NS") }
+      end
+
     end
 
     # Fully testing a breakpoint with zero dillutions between s_max and r_min

@@ -52,7 +52,7 @@ class ClsiBreakpoint < ActiveRecord::Base
     results = Hash.new
 
     # Use the breakpoints contained within this breakpoint
-    results[:interpretation] = interpet_reaction_from_breakpoints(mic_result)
+    results[:interpretation] = interpret_reaction_from_breakpoints(mic_result)
 
     # If we have surrogate drug reaction interpretations, we need to process additional information
     unless surrogate_drug_reaction_interpretations.nil?
@@ -239,81 +239,76 @@ class ClsiBreakpoint < ActiveRecord::Base
   ##        R - Resistant
   ##        NS - Not Susceptible
   ##        NI - No Interpretation
-  def interpet_reaction_from_breakpoints(mic_result)
+  def interpret_reaction_from_breakpoints(mic_result)
     return nil if mic_result.nil?
     return nil if mic_result.mic_edge.nil? || mic_result.mic_value.nil? 
     return nil if s_maximum.nil?
 
-    dillution_index_between_r_and_s = Dilution.index_between(s_maximum, r_minimum)
-
     # The actual mic_value is lower than OR equal to the measured dillution.
-    if mic_result.mic_edge == -1
+    return interpret_negative_edge_reaction_from_breakpoints(mic_result.mic_value) if mic_result.mic_edge == -1
+    return interpret_positive_edge_reaction_from_breakpoints(mic_result.mic_value) if mic_result.mic_edge == 1
+    return interpret_zero_edge_reaction_from_breakpoints(mic_result.mic_value)
 
-      if mic_result.mic_value <= s_maximum
-        # <=mic_value -- s_max
-        return "S"
-      else
-        if r_minimum
-          # NOTE if a -1 edge is equivalent to a logical <= then we can optimize the follwing
-          # if statement. Bradley to verify w/ Jason and Johny.
-          return "NI"
-        else
-          ## s_max -- <=mic_value 
-          return "S" if Dilution.index_between(s_maximum, mic_result.mic_value) == 1 
-          return "NI"
-        end
-      end
+  end
 
-    ## The actual mic_value is higher than the measured dillution.
-    elsif mic_result.mic_edge == 1
-
-      if mic_result.mic_value < s_maximum
-        ##  mic_value => s_max 
-        return "NI"
-      elsif mic_result.mic_value == s_maximum
-        if r_minimum
-          # s_max==mic_value=> -- r_min
-          return "R" if Dilution.index_between(r_minimum, mic_result.mic_value) == 1
-          return "NS"
-        else
-          # s_max==mic_value=>
-          return "NS"
-        end
-      else
-        if r_minimum
-          if mic_result.mic_value >= r_minimum
-            # s_max -- r_min = mic_value=>
-            return "R"
-          else 
-            # s_max -- mic_value=> -- r_min
-            return "R" if Dilution.index_between(r_minimum, mic_result.mic_value) == 1
-            return "NS"
-          end
-        end
-      end
-
+  def interpret_zero_edge_reaction_from_breakpoints(mic_value)
+    if mic_value <= s_maximum
+      # mic_value -- s_max OR mic_value==s_max
+      return "S"
     else
-      # Defualt logic holds when the mic_edge value == 0
-      if mic_result.mic_value <= s_maximum
-        # mic_value -- s_max
-        return "S"
-      else
-        if r_minimum
-          if mic_result.mic_value < r_minimum
-            # s_max -- mic_value -- r_min
-            return "I"
-          else
-            # s_max -- r_min -- mic_value
-            return "R"
-          end
+      if r_minimum
+        if mic_value < r_minimum
+          # s_max -- mic_value -- r_min
+          return "I"
         else
-          # s_max -- mic_value
-          return "NS"
+          # s_max -- r_min -- mic_value
+          return "R"
         end
+      else
+        # s_max -- mic_value
+        return "NS"
       end
     end
   end
 
+  def interpret_negative_edge_reaction_from_breakpoints(mic_value)
+    if mic_value <= s_maximum
+      # <=mic_value -- s_max OR <=mic_value == s_max
+      return "S"
+    else
+      # s_max ?? <=mic_value 
+      return "NI"
+    end
+  end
+
+  def interpret_positive_edge_reaction_from_breakpoints(mic_value)
+    if mic_value < s_maximum
+      return "NI"
+    elsif mic_value == s_maximum
+      if r_minimum
+        # s_max==mic_value=> -- r_min
+        return "R" if Dilution.index_between(s_maximum, r_minimum) == 1
+        return "NS"
+      else
+        # s_max==mic_value=>
+        return "NS"
+      end
+    else
+      if r_minimum
+        if mic_value >= r_minimum
+          # s_max -- r_min = mic_value=>
+          return "R"
+        else 
+          # s_max -- mic_value=> -- r_min
+          return "R" if Dilution.index_between(r_minimum, mic_value) == 1
+          return "NS"
+        end
+      else
+        # s_max -- mic_value=>
+        return "NS"
+      end
+    end
+  end
 
   # !!!Important!!! Surrogate drugs will never have a surrogate themselves. 
   # Therefore we pull out the surrogate interpretation to avoid infite recursive loops.
