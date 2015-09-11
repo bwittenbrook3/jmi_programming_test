@@ -8,6 +8,7 @@ FactoryGirl.define do
     factory :standard_breakpoint do 
       s_maximum 1.0
       r_minimum 4.0
+      drug
     end
 
     factory :no_r_minimum_breakpoint do 

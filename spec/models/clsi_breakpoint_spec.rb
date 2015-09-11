@@ -427,6 +427,67 @@ RSpec.describe ClsiBreakpoint, type: :model do
         end
       end
     end
+  end
+
+  describe "#create_organism_drug_breakpoints_for" do 
+
+    context "(nil)" do 
+      let(:breakpoint) {FactoryGirl.create :standard_breakpoint}
+      # let(:priority_based_organism_codes) { { 1 => "AB"} }
+      #subject { breakpoint.create_organism_drug_breakpoints_for(nil) }
+      #it { is_expected.to be_nil }
+
+      it "should not add any new organism_drug_breakpoints" do 
+        expect(OrganismDrugBreakpoint.all.count).to eq(0)
+        breakpoint.send(:create_organism_drug_breakpoints_for, nil)
+        expect(OrganismDrugBreakpoint.all.count).to eq(0)
+      end
+    end
+
+    context "( {1 => ['AB']} )" do 
+      let(:breakpoint) {FactoryGirl.create :standard_breakpoint}
+      let(:priority_based_organism_codes) { { 1 => ["AB"]} }
+
+      it "should add an organism with code 'AB'" do 
+        expect(Organism.where(code: "AB").count).to eq(0)
+        breakpoint.send(:create_organism_drug_breakpoints_for, priority_based_organism_codes)
+        expect(Organism.where(code: "AB").count).to eq(1)
+      end
+
+      context "and 'AB' already exists" do 
+
+        it "should not add a NEW organism with code 'AB'" do 
+          Organism.create(code: "AB")
+          expect(Organism.where(code: "AB").count).to eq(1)
+          breakpoint.send(:create_organism_drug_breakpoints_for, priority_based_organism_codes)
+          expect(Organism.where(code: "AB").count).to eq(1)
+        end
+      end
+
+      context "a breakpoint for the drug/organism combination already exists" do 
+        it "should not add a new breakpoint unless the priority match is higher" do 
+          breakpoint.send(:create_organism_drug_breakpoints_for, priority_based_organism_codes)
+          expect(OrganismDrugBreakpoint.all.count).to eq(1)
+          breakpoint.send(:create_organism_drug_breakpoints_for, { 3 => ["AB"] })
+          expect(OrganismDrugBreakpoint.all.count).to eq(1)
+          organism_drug_breakpoint = OrganismDrugBreakpoint.all.first
+          expect(organism_drug_breakpoint.priority).to eq(3)
+          expect(organism_drug_breakpoint.organism.code).to eq("AB")
+        end
+      
+      end
+    end
+
+    context "( {1 => ['AB', 'BC']} )" do 
+      let(:breakpoint) {FactoryGirl.create :standard_breakpoint}
+      let(:priority_based_organism_codes) { { 1 => ["AB", "BC"]} }
+
+      it "should add an organism with code 'AB' and one with 'BC'" do 
+        expect(Organism.all.count).to eq(0)
+        breakpoint.send(:create_organism_drug_breakpoints_for, priority_based_organism_codes)
+        expect(Organism.all.count).to eq(2)
+      end
+    end
 
   end
 

@@ -204,6 +204,7 @@ class ClsiBreakpoint < ActiveRecord::Base
   # should exist per Organism/Drug combination. However, more than one breakpoint can exist as long 
   # as they each breakpoint has different (delivery mechnism / infection_type).
   def create_organism_drug_breakpoints_for(priority_based_organism_codes)
+    return nil unless priority_based_organism_codes.respond_to? :each
 
     priority_based_organism_codes.each do |priority, organism_codes|
       organism_codes.each do |organism_code|
@@ -212,49 +213,24 @@ class ClsiBreakpoint < ActiveRecord::Base
         # If the organsim_code cannot be found, create the record.
         organism = Organism.where(code: organism_code).first_or_create
 
-        # Initially set match found to false.
-        match_found = false
-
-        # Pull all organism_drug_breakpoints for the provided organism - drug combination
-        OrganismDrugBreakpoint.where( drug_id: drug.id, 
+        organism_drug_breakpoint =  OrganismDrugBreakpoint.where( 
+                                      drug_id: drug.id, 
                                       organism_id: organism.id, 
                                       delivery_mechanism: delivery_mechanism, 
                                       infection_type: infection_type          
-        ).each do |organism_drug_breakpoint|
+                                    ).first_or_initialize
 
-          breakpoint = organism_drug_breakpoint.clsi_breakpoint
+        # If this breakpoint has a higher priority, or the found breakpoint was just created...
+        if organism_drug_breakpoint.priority.nil? || priority > organism_drug_breakpoint.priority
 
-          # Check to see if this breakpoint matches the same meta data as the one found.
-          if delivery_mechanism ==  breakpoint.delivery_mechanism && infection_type == breakpoint.infection_type
-
-            # If this breakpoint has a higher priority,
-            if organism_drug_breakpoint.priority < priority
-
-              # Update the breakpoint matching information
-              organism_drug_breakpoint.priority = priority
-              organism_drug_breakpoint.clsi_breakpoint_id = id 
-              organism_drug_breakpoint.save!
-            end
-
-            # Show that we found a match and we don't need to create a record
-            match_found = true
-          end
-        end
-
-        unless match_found
-          OrganismDrugBreakpoint.create(  organism_id: organism.id, 
-                                          drug_id: drug.id,
-                                          clsi_breakpoint_id: id,
-                                          priority: priority,
-                                          delivery_mechanism: delivery_mechanism, 
-                                          infection_type: infection_type            )
+          # Update the breakpoint matching information
+          organism_drug_breakpoint.priority = priority
+          organism_drug_breakpoint.clsi_breakpoint_id = id 
+          organism_drug_breakpoint.save!
         end
       end
     end
   end
-
-
-
 
   ## Will return the reaction interpretation based on this s_max and r_min 
   ## values contained within this breakpoint.
