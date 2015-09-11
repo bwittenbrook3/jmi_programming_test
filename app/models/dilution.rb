@@ -28,6 +28,11 @@ class Dilution
   
     POSSIBLE_VALUES_HASH ||= Hash[POSSIBLE_VALUES.map.with_index.to_a]
 
+  def self.is_valid?(dilution)
+    dilution = dilution.to_f if dilution.instance_of? BigDecimal
+    return POSSIBLE_VALUES.include?(dilution)
+  end
+
   def self.index_between(dilution_a, dilution_b)
     return nil if dilution_a.nil? || dilution_b.nil?
 
