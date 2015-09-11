@@ -1,12 +1,12 @@
 class ClsiBreakpointValidator < ActiveModel::Validator
   def validate(record)
-    validation_errors(record).each do |validation_error|
+    validation_errors_of(record).each do |validation_error|
       record.errors[:base] << validation_error
     end
   end
 
   private 
-  def validation_errors(record)
+  def validation_errors_of(record)
     errors = []
 
     s_max = record.s_maximum

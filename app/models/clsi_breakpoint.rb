@@ -216,7 +216,12 @@ class ClsiBreakpoint < ActiveRecord::Base
         match_found = false
 
         # Pull all organism_drug_breakpoints for the provided organism - drug combination
-        OrganismDrugBreakpoint.where(organism_id: organism.id, drug_id: drug.id).each do |organism_drug_breakpoint|
+        OrganismDrugBreakpoint.where( drug_id: drug.id, 
+                                      organism_id: organism.id, 
+                                      delivery_mechanism: delivery_mechanism, 
+                                      infection_type: infection_type          
+        ).each do |organism_drug_breakpoint|
+
           breakpoint = organism_drug_breakpoint.clsi_breakpoint
 
           # Check to see if this breakpoint matches the same meta data as the one found.
@@ -240,7 +245,9 @@ class ClsiBreakpoint < ActiveRecord::Base
           OrganismDrugBreakpoint.create(  organism_id: organism.id, 
                                           drug_id: drug.id,
                                           clsi_breakpoint_id: id,
-                                          priority: priority         )
+                                          priority: priority,
+                                          delivery_mechanism: delivery_mechanism, 
+                                          infection_type: infection_type            )
         end
       end
     end

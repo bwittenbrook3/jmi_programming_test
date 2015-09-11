@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150909184525) do
+ActiveRecord::Schema.define(version: 20150911011514) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -109,16 +109,19 @@ ActiveRecord::Schema.define(version: 20150909184525) do
   end
 
   create_table "organism_drug_breakpoints", force: :cascade do |t|
-    t.integer  "organism_id"
-    t.integer  "drug_id"
-    t.integer  "clsi_breakpoint_id"
-    t.integer  "priority"
+    t.integer  "organism_id",        null: false
+    t.integer  "drug_id",            null: false
+    t.integer  "clsi_breakpoint_id", null: false
+    t.integer  "priority",           null: false
     t.datetime "created_at",         null: false
     t.datetime "updated_at",         null: false
+    t.string   "delivery_mechanism"
+    t.string   "infection_type"
   end
 
   add_index "organism_drug_breakpoints", ["clsi_breakpoint_id"], name: "index_organism_drug_breakpoints_on_clsi_breakpoint_id", using: :btree
   add_index "organism_drug_breakpoints", ["drug_id"], name: "index_organism_drug_breakpoints_on_drug_id", using: :btree
+  add_index "organism_drug_breakpoints", ["organism_id", "drug_id", "clsi_breakpoint_id", "delivery_mechanism", "infection_type"], name: "index_drug_organism_breakpoint", unique: true, using: :btree
   add_index "organism_drug_breakpoints", ["organism_id"], name: "index_organism_drug_breakpoints_on_organism_id", using: :btree
 
   create_table "organisms", force: :cascade do |t|
